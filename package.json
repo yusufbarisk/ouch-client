@@ -1,0 +1,28 @@
+{
+  "name": "ouch-client",
+  "version": "1.0.0",
+  "description": "bist spec compliant ouch client",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yusufbarisk/ouch-client.git"
+  },
+  "keywords": [
+    "OUCH",
+    "Client",
+    "ZeroMQ"
+  ],
+  "author": "ybkose",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yusufbarisk/ouch-client/issues"
+  },
+  "homepage": "https://github.com/yusufbarisk/ouch-client#readme",
+  "devDependencies": {
+    "electron": "35.0.0"
+  }
+}
