@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import ClassVar
+import struct
+from typing import Iterator, Tuple, Optional, Union
+
 
 class PacketType(Enum):
     LOGIN_REQUEST = b'L'
@@ -142,3 +145,33 @@ class SoupPacketFactory:
         body = pkt.to_bytes()
         length = len(body) + 1
         return length.to_bytes(2, "big") + pkt.TYPE_ID + body
+
+    @classmethod
+    def parse_frame(cls, buf: memoryview):
+        """
+        Try to parse one complete frame from the start of buf.
+        Returns (msg, bytes_consumed). If bytes_consumed==0, you need more data.
+        """
+        if len(buf) < 3:
+            return None, 0
+        # first two bytes are the length, third byte is the type
+        # > is big-endian, H is unsigned short so 2b
+
+        length = struct.unpack_from(">H", buf, 0)[0]
+        total = 2 + length
+        if len(buf) < total:
+            return None, 0
+
+        # slice out frame
+        type_byte = bytes(buf[2:3])
+        payload = buf[3:total]
+
+        pkt_cls = cls.PACKET_TYPES.get(type_byte)
+        if not pkt_cls:
+            raise ValueError(f"Unknown packet type {type_byte!r}")
+        
+        # clean out buffer
+        buf = buf[total:]
+
+        msg = pkt_cls.from_bytes(bytes(payload))
+        return msg, total
