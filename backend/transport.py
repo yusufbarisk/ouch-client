@@ -3,6 +3,7 @@ from soupbin_msgs import *
 from dotenv import load_dotenv
 import os
 import logging
+from heartbeat_controller import HeartbeatController
 
 class OuchClient(asyncio.Protocol):
     def __init__(self):
@@ -11,6 +12,7 @@ class OuchClient(asyncio.Protocol):
         self.transport = None
         self._buffer = bytearray()
         self.send_q = asyncio.Queue()
+        self.hb = None
 
     def connection_made(self, transport: asyncio.Transport):
         self.transport = transport
@@ -54,7 +56,14 @@ class OuchClient(asyncio.Protocol):
         self.logger.debug(f"Received: {msg}")
         
         if isinstance(msg, ServerHeartbeat):
+            # Update server timestamp
+            if self.hb:
+                self.logger.debug("Updating server timestamp")
+                self.hb.refresh_server_timestamp()
+            else:
+                self.logger.warning("Heartbeat controller not initialized, skipping timestamp update")
             self.logger.info("💓 Server heartbeat received")
+            
         elif isinstance(msg, LoginAccepted):
             self.logger.info("✅ Login accepted")
         elif isinstance(msg, LoginRejected):
@@ -75,13 +84,18 @@ async def main():
     load_dotenv()
     host_addr = os.getenv("HOST_ADDR")
     hport = os.getenv("HOST_PORT")
+
+    def factory() -> OuchClient:
+        client = OuchClient()
+        HeartbeatController(client)  # Initialize heartbeat controller
+        return client
     
     if not host_addr or not hport:
         raise ValueError("HOST_ADDR and HOST_PORT must be set in the environment variables")
     
     loop = asyncio.get_running_loop()
     await loop.create_connection(
-        lambda: OuchClient(),  
+        lambda: factory(),  
         host=str(host_addr), port=int(hport))
 
 asyncio.run(main())

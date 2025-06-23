@@ -75,7 +75,7 @@ class EnterOrder:
         client_category = int(data[104:105].decode().strip('\x00'))
         off_hours = int(data[105:106].decode().strip('\x00'))
         reserved_bits = data[106:113]
-        
+
 
         return cls(order_token=order_token, order_book_id=order_book_id, side=side,
                    qty=qty, price=price, time_in_force=time_in_force,
@@ -548,55 +548,43 @@ class MassQuoteReject:
 
 
 class OUCH_MessageFactory:
+    PACKET_TYPES: ClassVar[dict] = {
+        OUCH_INBOUND_MSG_TYPE.ENTER_ORDER.value: EnterOrder,
+        OUCH_INBOUND_MSG_TYPE.REPLACE_ORDER.value: ReplaceOrder,
+        OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER.value: CancelOrder,
+        OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value: CancelOrderByID,
+        OUCH_INBOUND_MSG_TYPE.MASS_QUOTE.value: MassQuote,
+
+        OUCH_OUTBOUND_MSG_TYPE.ORDER_ACK.value: OrderAck,
+        OUCH_OUTBOUND_MSG_TYPE.ORDER_REJECT.value: OrderReject,
+        OUCH_OUTBOUND_MSG_TYPE.ORDER_REPLACE_ACK.value: OrderReplaceAck,
+        OUCH_OUTBOUND_MSG_TYPE.ORDER_CANCEL_ACK.value: OrderCancelAck,
+        OUCH_OUTBOUND_MSG_TYPE.ORDER_EXECUTED.value: OrderExecuted,
+        OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE_ACK.value: MassQuoteAck,
+        OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE_REJECT.value: MassQuoteReject,
+    }
+
     @staticmethod
-    def create_message(data: bytes) -> Optional[dataclass]:
+    def create_message(data: bytes):
         if not data:
             return None
         
         type_id = data[0:1]
         
         if type_id == OUCH_INBOUND_MSG_TYPE.ENTER_ORDER.value:
-            return EnterOrder.from_bytes(data[1:])
+            return EnterOrder.from_soupbin(data[1:])
         elif type_id == OUCH_INBOUND_MSG_TYPE.REPLACE_ORDER.value:
-            return ReplaceOrder.from_bytes(data[1:])
+            return ReplaceOrder.from_soupbin(data[1:])
         elif type_id == OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER.value:
-            return CancelOrder.from_bytes(data[1:])
+            return CancelOrder.from_soupbin(data[1:])
         elif type_id == OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value:
-            return CancelOrderByID.from_bytes(data[1:])
-        elif type_id == OUCH_INBOUND_MSG_TYPE.MASS_QUOTE.value
-    
+            return CancelOrderByID.from_soupbin(data[1:])
+        elif type_id == OUCH_INBOUND_MSG_TYPE.MASS_QUOTE.value:
+            return MassQuote.from_soupbin(data[1:])
+        
     @classmethod
     def serialize(cls, pkt) -> bytes:
         body = pkt.to_bytes()
         length = len(body) + 1
         return length.to_bytes(2, "big") + pkt.TYPE_ID + body
 
-    @classmethod
-    def parse_frame(cls, buf: memoryview):
-        """
-        Try to parse one complete frame from the start of buf.
-        Returns (msg, bytes_consumed). If bytes_consumed==0, you need more data.
-        """
-        if len(buf) < 3:
-            return None, 0
-        # first two bytes are the length, third byte is the type
-        # > is big-endian, H is unsigned short so 2b
-
-        length = struct.unpack_from(">H", buf, 0)[0]
-        total = 2 + length
-        if len(buf) < total:
-            return None, 0
-
-        # slice out frame
-        type_byte = bytes(buf[2:3])
-        payload = buf[3:total]
-
-        pkt_cls = cls.PACKET_TYPES.get(type_byte)
-        if not pkt_cls:
-            raise ValueError(f"Unknown packet type {type_byte!r}")
-        
-        # clean out buffer
-        buf = buf[total:]
-
-        msg = pkt_cls.from_bytes(bytes(payload))
-        return msg, total

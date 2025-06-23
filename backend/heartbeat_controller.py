@@ -12,6 +12,7 @@ class HeartbeatController:
 
     def __init__(self, client: OuchClient):
         self.client = client
+        client.hb = self 
         self.clientTimestamp = datetime.now(timezone.utc)
         self.serverTimestamp = datetime.now(timezone.utc)
         self._task = asyncio.create_task(self._heartbeat())
