@@ -2,17 +2,21 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from soupbin_msgs import ClientHeartbeat, ServerHeartbeat
-from transport import OuchClient
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from transport import OuchClient                # only for hints
 
 logger = logging.getLogger(__name__)
 
 class HeartbeatController:
-
+    
     timeoutThreshold = 5  # seconds
 
-    def __init__(self, client: OuchClient):
+    def __init__(self, client: 'OuchClient'):
         self.client = client
-        client.hb = self 
+        self.client.hb = self 
         self.clientTimestamp = datetime.now(timezone.utc)
         self.serverTimestamp = datetime.now(timezone.utc)
         self._task = asyncio.create_task(self._heartbeat())

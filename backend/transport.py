@@ -6,13 +6,14 @@ import logging
 from heartbeat_controller import HeartbeatController
 
 class OuchClient(asyncio.Protocol):
+    hb: Optional["HeartbeatController"] = None
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         self.transport = None
         self._buffer = bytearray()
         self.send_q = asyncio.Queue()
-        self.hb = None
 
     def connection_made(self, transport: asyncio.Transport):
         self.transport = transport
@@ -22,7 +23,7 @@ class OuchClient(asyncio.Protocol):
         test_username = os.getenv("TEST_USERNAME", "default_user")
         test_password = os.getenv("TEST_PASSWORD", "default_pass")
         # Send a login request
-        res = self.send_q.put(LoginRequest(username=test_username, password=test_password))
+        asyncio.create_task(self.send_q.put(LoginRequest(username=test_username, password=test_password)))
 
     def data_received(self, data: bytes):
         self._buffer.extend(data)
@@ -55,7 +56,7 @@ class OuchClient(asyncio.Protocol):
         """Handle incoming messages."""
         self.logger.debug(f"Received: {msg}")
         
-        if isinstance(msg, ServerHeartbeat):
+        if isinstance(msg, ServerHeartbeat | SequencedData | UnsequencedData):
             # Update server timestamp
             if self.hb:
                 self.logger.debug("Updating server timestamp")
@@ -63,9 +64,11 @@ class OuchClient(asyncio.Protocol):
             else:
                 self.logger.warning("Heartbeat controller not initialized, skipping timestamp update")
             self.logger.info("💓 Server heartbeat received")
-            
+
+
         elif isinstance(msg, LoginAccepted):
             self.logger.info("✅ Login accepted")
+
         elif isinstance(msg, LoginRejected):
             self.logger.warning(f"❌ Login rejected: {msg.reason}")
         elif isinstance(msg, SequencedData):
@@ -78,6 +81,7 @@ class OuchClient(asyncio.Protocol):
 
     def on_disconnect(self, exc):
         self.logger.warning(f"⚠️ Disconnected: {exc}")
+
 
 async def main():
     # Load environment variables
