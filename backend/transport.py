@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 import logging
 from heartbeat_controller import HeartbeatController
-
+from ouch_msgs import OUCH_MessageFactory
 class OuchClient(asyncio.Protocol):
     hb: Optional["HeartbeatController"] = None
 
@@ -14,6 +14,7 @@ class OuchClient(asyncio.Protocol):
         self.transport = None
         self._buffer = bytearray()
         self.send_q = asyncio.Queue()
+        self.next_seq = 0
 
     def connection_made(self, transport: asyncio.Transport):
         self.transport = transport
@@ -67,12 +68,20 @@ class OuchClient(asyncio.Protocol):
 
 
         elif isinstance(msg, LoginAccepted):
-            self.logger.info("✅ Login accepted")
+            self.next_seq = msg.sequence_number
+            self.logger.info("✅ Login accepted setting next seq number to " + str(self.next_seq))
 
         elif isinstance(msg, LoginRejected):
             self.logger.warning(f"❌ Login rejected: {msg.reason}")
+
+         # Promote to OUCH Handlers   
         elif isinstance(msg, SequencedData):
+            self.next_seq += 1
             self.logger.info(f"📊 Sequenced data: {msg}")
+            ouch_msg = OUCH_MessageFactory.create_message(msg.message) # may need some slicing debug later
+            # if msg.seq
+
+
         elif isinstance(msg, UnsequencedData):
             self.logger.info(f"📈 Unsequenced data: {msg}")
         else:
