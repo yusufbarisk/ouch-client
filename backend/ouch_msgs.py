@@ -4,14 +4,14 @@ from typing import ClassVar, List, Optional
 from soupbin_msgs import *
 
 
-class OUCH_INBOUND_MSG_TYPE(Enum):
+class OUCH_OUTBOUND_MSG_TYPE(Enum):
     ENTER_ORDER = b'O'
     REPLACE_ORDER = b'U'
     CANCEL_ORDER = b'X'
     CANCEL_ORDER_BY_ID = b'Y'
     MASS_QUOTE = b'Q'
 
-class OUCH_OUTBOUND_MSG_TYPE(Enum):
+class OUCH_INBOUND_MSG_TYPE(Enum):
     ORDER_ACK = b'A'
     ORDER_REJECT = b'J' # Used for enter replace and cancel
     ORDER_REPLACE_ACK = b'U'
@@ -23,7 +23,7 @@ class OUCH_OUTBOUND_MSG_TYPE(Enum):
 
 @dataclass
 class EnterOrder:
-    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.ENTER_ORDER.value
+    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.ENTER_ORDER.value
     order_token: str
     order_book_id: int
     side: str # 'B' for buy, 'S' for sell 'T' for short sell
@@ -87,7 +87,7 @@ class EnterOrder:
 
 @dataclass
 class ReplaceOrder:
-    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.REPLACE_ORDER.value
+    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.REPLACE_ORDER.value
     existing_order_token: str                 # 14 bytes  :contentReference[oaicite:11]{index=11}
     replacement_order_token: str              # 14 bytes
     qty: int                                  # desired TOTAL quantity
@@ -141,7 +141,7 @@ class ReplaceOrder:
 
 @dataclass
 class CancelOrder:
-    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER.value
+    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.CANCEL_ORDER.value
     order_token: str                          # 14 bytes from original Enter :contentReference[oaicite:12]{index=12}
 
     def to_soupbin(self) -> bytes:
@@ -156,7 +156,7 @@ class CancelOrder:
 
 @dataclass
 class CancelOrderByID:
-    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value
+    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value
     order_book_id: int
     side: str                                 # 'B' or 'S'                 :contentReference[oaicite:13]{index=13}
     order_id: int
@@ -183,7 +183,7 @@ class CancelOrderByID:
 ## will look into this later ignore for now
 @dataclass
 class MassQuote:
-    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.MASS_QUOTE.value
+    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE.value
     order_token: str
     client_category: int
     client_account: str
@@ -234,7 +234,7 @@ class MassQuote:
 
 @dataclass
 class OrderAck:
-    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.ORDER_ACK.value
+    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.ORDER_ACK.value
     ts_ns: int
     order_token: str
     order_book_id: int
@@ -311,7 +311,7 @@ class OrderAck:
 
 @dataclass
 class OrderReject:
-    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.ORDER_REJECT.value
+    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.ORDER_REJECT.value
     ts_ns: int
     order_token: str
     reject_code: int                          # signed int                 :contentReference[oaicite:16]{index=16}
@@ -326,7 +326,7 @@ class OrderReject:
 
 @dataclass
 class OrderReplaceAck:
-    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.ORDER_REPLACE_ACK.value
+    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.ORDER_REPLACE_ACK.value
     ts_ns: int
     replacement_order_token: str
     previous_order_token: str
@@ -401,7 +401,7 @@ class OrderReplaceAck:
 
 @dataclass
 class OrderCancelAck:
-    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.ORDER_CANCEL_ACK.value
+    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.ORDER_CANCEL_ACK.value
     ts_ns: int
     order_token: str
     order_book_id: int
@@ -437,7 +437,7 @@ class OrderCancelAck:
 
 @dataclass
 class OrderExecuted:
-    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.ORDER_EXECUTED.value
+    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.ORDER_EXECUTED.value
     ts_ns: int
     order_token: str
     order_book_id: Optional[int]              # only for combo fills
@@ -478,7 +478,7 @@ class OrderExecuted:
 
 @dataclass
 class MassQuoteAck:
-    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE_ACK.value
+    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.MASS_QUOTE_ACK.value
     ts_ns: int
     order_token: str
     order_book_id: int
@@ -519,7 +519,7 @@ class MassQuoteAck:
 
 @dataclass
 class MassQuoteReject:
-    TYPE_ID: ClassVar[bytes] = OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE_REJECT.value
+    TYPE_ID: ClassVar[bytes] = OUCH_INBOUND_MSG_TYPE.MASS_QUOTE_REJECT.value
     ts_ns: int
     order_token: str
     order_book_id: Optional[int]              # blank when “all quotes rejected”
@@ -549,19 +549,19 @@ class MassQuoteReject:
 
 class OUCH_MessageFactory:
     PACKET_TYPES: ClassVar[dict] = {
-        OUCH_INBOUND_MSG_TYPE.ENTER_ORDER.value: EnterOrder,
-        OUCH_INBOUND_MSG_TYPE.REPLACE_ORDER.value: ReplaceOrder,
-        OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER.value: CancelOrder,
-        OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value: CancelOrderByID,
-        OUCH_INBOUND_MSG_TYPE.MASS_QUOTE.value: MassQuote,
+        OUCH_OUTBOUND_MSG_TYPE.ENTER_ORDER.value: EnterOrder,
+        OUCH_OUTBOUND_MSG_TYPE.REPLACE_ORDER.value: ReplaceOrder,
+        OUCH_OUTBOUND_MSG_TYPE.CANCEL_ORDER.value: CancelOrder,
+        OUCH_OUTBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value: CancelOrderByID,
+        OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE.value: MassQuote,
 
-        OUCH_OUTBOUND_MSG_TYPE.ORDER_ACK.value: OrderAck,
-        OUCH_OUTBOUND_MSG_TYPE.ORDER_REJECT.value: OrderReject,
-        OUCH_OUTBOUND_MSG_TYPE.ORDER_REPLACE_ACK.value: OrderReplaceAck,
-        OUCH_OUTBOUND_MSG_TYPE.ORDER_CANCEL_ACK.value: OrderCancelAck,
-        OUCH_OUTBOUND_MSG_TYPE.ORDER_EXECUTED.value: OrderExecuted,
-        OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE_ACK.value: MassQuoteAck,
-        OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE_REJECT.value: MassQuoteReject,
+        OUCH_INBOUND_MSG_TYPE.ORDER_ACK.value: OrderAck,
+        OUCH_INBOUND_MSG_TYPE.ORDER_REJECT.value: OrderReject,
+        OUCH_INBOUND_MSG_TYPE.ORDER_REPLACE_ACK.value: OrderReplaceAck,
+        OUCH_INBOUND_MSG_TYPE.ORDER_CANCEL_ACK.value: OrderCancelAck,
+        OUCH_INBOUND_MSG_TYPE.ORDER_EXECUTED.value: OrderExecuted,
+        OUCH_INBOUND_MSG_TYPE.MASS_QUOTE_ACK.value: MassQuoteAck,
+        OUCH_INBOUND_MSG_TYPE.MASS_QUOTE_REJECT.value: MassQuoteReject,
     }
 
     @staticmethod
@@ -571,15 +571,15 @@ class OUCH_MessageFactory:
         
         type_id = data[0:1]
         
-        if type_id == OUCH_INBOUND_MSG_TYPE.ENTER_ORDER.value:
+        if type_id == OUCH_OUTBOUND_MSG_TYPE.ENTER_ORDER.value:
             return EnterOrder.from_soupbin(data[1:])
-        elif type_id == OUCH_INBOUND_MSG_TYPE.REPLACE_ORDER.value:
+        elif type_id == OUCH_OUTBOUND_MSG_TYPE.REPLACE_ORDER.value:
             return ReplaceOrder.from_soupbin(data[1:])
-        elif type_id == OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER.value:
+        elif type_id == OUCH_OUTBOUND_MSG_TYPE.CANCEL_ORDER.value:
             return CancelOrder.from_soupbin(data[1:])
-        elif type_id == OUCH_INBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value:
+        elif type_id == OUCH_OUTBOUND_MSG_TYPE.CANCEL_ORDER_BY_ID.value:
             return CancelOrderByID.from_soupbin(data[1:])
-        elif type_id == OUCH_INBOUND_MSG_TYPE.MASS_QUOTE.value:
+        elif type_id == OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE.value:
             return MassQuote.from_soupbin(data[1:])
         
     @classmethod

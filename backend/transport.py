@@ -3,8 +3,10 @@ from soupbin_msgs import *
 from dotenv import load_dotenv
 import os
 import logging
+import sys
 from heartbeat_controller import HeartbeatController
 from ouch_msgs import OUCH_MessageFactory
+
 class OuchClient(asyncio.Protocol):
     hb: Optional["HeartbeatController"] = None
 
@@ -52,6 +54,9 @@ class OuchClient(asyncio.Protocol):
             assert self.transport is not None 
             self.transport.write(frame)
             self.logger.debug(f"Sent: {msg}")
+            if isinstance(msg, SequencedData):
+                self.next_seq += 1
+                self.logger.info(f"📤 Incremented SeqNo to: {self.next_seq}")
 
     def handle_message(self, msg):
         """Handle incoming messages."""
@@ -76,10 +81,11 @@ class OuchClient(asyncio.Protocol):
 
          # Promote to OUCH Handlers   
         elif isinstance(msg, SequencedData):
-            self.next_seq += 1
             self.logger.info(f"📊 Sequenced data: {msg}")
             ouch_msg = OUCH_MessageFactory.create_message(msg.message) # may need some slicing debug later
-            # if msg.seq
+            
+            if ouch_msg:
+                self.logger.info(f"📊 Processed OUCH message: {ouch_msg}")
 
 
         elif isinstance(msg, UnsequencedData):
@@ -98,6 +104,18 @@ async def main():
     host_addr = os.getenv("HOST_ADDR")
     hport = os.getenv("HOST_PORT")
 
+    root = logging.getLogger()
+    if not root.handlers:
+        handler = logging.StreamHandler(stream=sys.stderr)
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(name)s %(levelname)-8s │ %(message)s",
+            datefmt="%H:%M:%S"
+        ))
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
+
+
     def factory() -> OuchClient:
         client = OuchClient()
         HeartbeatController(client)  # Initialize heartbeat controller
@@ -110,5 +128,7 @@ async def main():
     await loop.create_connection(
         lambda: factory(),  
         host=str(host_addr), port=int(hport))
+    
+    await asyncio.Event().wait()
 
 asyncio.run(main())

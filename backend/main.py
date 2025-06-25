@@ -15,3 +15,4 @@ class SoupBinPacket:
 
     def __str__(self):
         return f"SoupBinPacket(data={self.data})"
+
