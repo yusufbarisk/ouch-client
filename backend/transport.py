@@ -3,20 +3,23 @@ from soupbin_msgs import *
 from dotenv import load_dotenv
 import os
 import logging
-import sys
+import sys, zmq, json
 from heartbeat_controller import HeartbeatController
 from ouch_msgs import OUCH_MessageFactory
 
+
 class OuchClient(asyncio.Protocol):
+
     hb: Optional["HeartbeatController"] = None
 
-    def __init__(self):
+    def __init__(self, pub):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         self.transport = None
         self._buffer = bytearray()
         self.send_q = asyncio.Queue()
         self.next_seq = 0
+        self.pub = pub
 
     def connection_made(self, transport: asyncio.Transport):
         self.transport = transport
@@ -57,6 +60,10 @@ class OuchClient(asyncio.Protocol):
             if isinstance(msg, SequencedData):
                 self.next_seq += 1
                 self.logger.info(f"📤 Incremented SeqNo to: {self.next_seq}")
+    
+
+    # will send received acks and heartbeats
+  
 
     def handle_message(self, msg):
         """Handle incoming messages."""
@@ -65,7 +72,7 @@ class OuchClient(asyncio.Protocol):
         if isinstance(msg, ServerHeartbeat | SequencedData | UnsequencedData):
             # Update server timestamp
             if self.hb:
-                self.logger.debug("Updating server timestamp")
+                # self.logger.debug("Updating server timestamp")
                 self.hb.refresh_server_timestamp()
             else:
                 self.logger.warning("Heartbeat controller not initialized, skipping timestamp update")
@@ -93,42 +100,12 @@ class OuchClient(asyncio.Protocol):
         else:
             self.logger.warning(f"❓ Unknown message type: {type(msg)}")
 
+        self.send_event("message_received", {"type": type(msg).__name__, "content": str(msg)})
+
 
     def on_disconnect(self, exc):
         self.logger.warning(f"⚠️ Disconnected: {exc}")
 
-
-async def main():
-    # Load environment variables
-    load_dotenv()
-    host_addr = os.getenv("HOST_ADDR")
-    hport = os.getenv("HOST_PORT")
-
-    root = logging.getLogger()
-    if not root.handlers:
-        handler = logging.StreamHandler(stream=sys.stderr)
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(name)s %(levelname)-8s │ %(message)s",
-            datefmt="%H:%M:%S"
-        ))
-    root.addHandler(handler)
-    root.setLevel(logging.INFO)
-
-
-
-    def factory() -> OuchClient:
-        client = OuchClient()
-        HeartbeatController(client)  # Initialize heartbeat controller
-        return client
-    
-    if not host_addr or not hport:
-        raise ValueError("HOST_ADDR and HOST_PORT must be set in the environment variables")
-    
-    loop = asyncio.get_running_loop()
-    await loop.create_connection(
-        lambda: factory(),  
-        host=str(host_addr), port=int(hport))
-    
-    await asyncio.Event().wait()
-
-asyncio.run(main())
+    def send_event(self, event_type: str, payload: dict):
+        envelope = {"type": event_type, "payload": payload}
+        self.pub.send_string(json.dumps(envelope))
