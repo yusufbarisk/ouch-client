@@ -6,17 +6,19 @@ import { TagIcon, BarChart3, Globe, ChevronLeft, ChevronRight } from 'lucide-rea
 import TagsPanel from './TagsPanel';
 import StatisticsPanel from './StatisticsPanel';
 import SessionPanel from './SessionPanel';
+import OrderExecutionPanel from './OrderExecutionPanel';
 
 interface RightSidebarProps {
   selectedMessage: any;
   statistics: any;
   orders: any[];
   isConnected: boolean;
+  onNewOrder?: (orderMessage: any) => void;
 }
 
-type PanelType = 'tags' | 'statistics' | 'session' | null;
+type PanelType = 'OE' | 'tags' | 'statistics' | 'session' | null;
 
-const RightSidebar = ({ selectedMessage, statistics, orders, isConnected }: RightSidebarProps) => {
+const RightSidebar = ({ selectedMessage, statistics, orders, isConnected, onNewOrder }: RightSidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [activePanel, setActivePanel] = useState<PanelType>(null);
 
@@ -37,7 +39,45 @@ const RightSidebar = ({ selectedMessage, statistics, orders, isConnected }: Righ
     }
   };
 
+  const handleSendOrder = (order: any) => {
+    console.log('handleSendOrder called with:', order);
+
+    // Send order to backend
+    window.electronAPI.sendOrder(order);
+    
+    // Add order to message panel (if callback is provided)
+    if (onNewOrder) {
+      console.log('onNewOrder callback exists, creating order message...');
+      const orderMessage = {
+        id: order.order_token,
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'outgoing',
+        msgType: 'EnterOrder',
+        content: `${order.side} ${order.qty} @ ${order.price} (${order.order_token})`,
+        tags: {
+          'Order Token': order.order_token,
+          'Side': order.side,
+          'Quantity': order.qty.toString(),
+          'Price': order.price.toString()
+        },
+        status: 'sent'
+      };
+      console.log('Calling onNewOrder with:', orderMessage);
+      onNewOrder(orderMessage);
+    } else {
+      console.log('onNewOrder callback is NOT available');
+    }
+
+    console.log('Order sent:', order);
+  };
+
   const sidebarItems = [
+    {
+      id: 'OE' as PanelType,
+      icon: Globe,
+      label: 'Order Exec',
+      component: <OrderExecutionPanel onSendOrder={handleSendOrder} isConnected={isConnected} />
+    },
     {
       id: 'tags' as PanelType,
       icon: TagIcon,
@@ -55,7 +95,8 @@ const RightSidebar = ({ selectedMessage, statistics, orders, isConnected }: Righ
       icon: Globe,
       label: 'Session',
       component: <SessionPanel isConnected={isConnected} />
-    }
+    },
+    
   ];
 
   return (

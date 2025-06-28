@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import OrdersAndTransactions from '@/components/OrdersAndTransactions';
-import MessagesPanel from '@/components/MessagesPanel';
 import RightSidebar from '@/components/RightSidebar';
 import { useToast } from '@/hooks/use-toast';
+import MessagesPanel, { eventToOuchMessage } from '@/components/MessagesPanel';
+
 
 interface Order {
   id: string;
@@ -16,6 +17,32 @@ interface Order {
   price: number;
   status: 'Pending' | 'Filled' | 'Rejected' | 'Partial';
   time: string;
+  ackMessage?: {
+    id: string;
+    content: string;
+    timestamp: string;
+    type: 'ack' | 'reject';
+  };
+  fillOrder?: {
+    id: string;
+    side: 'Buy' | 'Sell';
+    symbol: string;
+    quantity: number;
+    price: number;
+    timestamp: string;
+    counterparty: string;
+  };
+  rawData?: any; // For detailed inspection
+}
+
+interface OUCHMessage {
+  id: string;
+  type: 'incoming' | 'outgoing';
+  content: string;
+  timestamp: string;
+  msgType: string;
+  tags: Record<string, string>;
+  status?: 'sent' | 'delivered' | 'error';
 }
 
 interface FixMessage {
@@ -29,10 +56,11 @@ interface FixMessage {
 }
 
 const Index = () => {
+  const [events, setEvents] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [messages, setMessages] = useState<FixMessage[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<FixMessage | null>(null);
+  const [messages, setMessages] = useState<OUCHMessage[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<OUCHMessage | null>(null);
   const [statistics, setStatistics] = useState({
     totalOrders: 0,
     filled: 0,
@@ -42,6 +70,10 @@ const Index = () => {
   const { toast } = useToast();
 
   const handleConnect = () => {
+    // Check connection parameters (e.g., server URL, credentials)
+    // retrieve from dialog
+
+
     setIsConnected(true);
     toast({
       title: "🟢 Connected Successfully",
@@ -51,6 +83,23 @@ const Index = () => {
     
     // Simulate receiving initial data
     setTimeout(() => {
+
+      const ackMessage: Order['ackMessage'] = {
+        id: "ACK001",
+        content: "Order acknowledged",
+        timestamp: new Date().toLocaleTimeString(),
+        type: "ack",
+      }
+
+      const fillOrder: Order['fillOrder'] = {
+        id: "FILL001",
+        side: "Buy",
+        symbol: "AAPL",
+        quantity: 100,
+        price: 150.25,
+        timestamp: new Date().toLocaleTimeString(),
+        counterparty: "BrokerXYZ"
+      };
       const sampleOrder: Order = {
         id: "ORD001",
         type: "Market",
@@ -59,7 +108,8 @@ const Index = () => {
         quantity: 100,
         price: 150.25,
         status: "Filled",
-        time: new Date().toLocaleTimeString()
+        time: new Date().toLocaleTimeString(),
+        ackMessage: ackMessage
       };
       setOrders([sampleOrder]);
       setStatistics(prev => ({ ...prev, totalOrders: 1, filled: 1 }));
@@ -96,29 +146,61 @@ const Index = () => {
     });
   };
 
-  const handleSendMessage = (content: string) => {
-    const tags = content.split('|').reduce((acc, tag) => {
-      const [key, value] = tag.split('=');
-      if (key && value) acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
 
-    const newMessage: FixMessage = {
-      id: `MSG${Date.now()}`,
-      type: "outgoing",
-      content: content,
-      timestamp: new Date().toLocaleTimeString(),
-      msgType: tags['35'] || 'Unknown',
-      tags: tags,
-      status: "sent"
+  useEffect(() => {
+    // @ts-ignore
+    window.electronAPI?.onBackendEvent((data) => {
+      setEvents(prev => [...prev, data]);
+      setMessages(prev => [...prev, eventToOuchMessage(data)]);
+    });
+  }, []);
+
+  const handleSendMessage = (content: string) => {
+    
+    setMessages(prev => [
+      ...prev,
+      {
+        id: String(Date.now()),
+        type: 'outgoing',
+        content,
+        timestamp: new Date().toLocaleTimeString(),
+        msgType: 'Manual',
+        tags: {},
+        status: 'sent',
+      },
+    ]);
+  };
+
+  const handleNewOrder = (orderMessage: any) => {
+    console.log('handleNewOrder called with:', orderMessage);
+    
+    setMessages(prev => {
+      console.log('Previous messages count:', prev.length);
+      const newMessages = [orderMessage, ...prev];
+      console.log('New messages count:', newMessages.length);
+      return newMessages;
+    });
+
+    const newOrder: Order = {
+      id: orderMessage.id,
+      type: 'Limit',
+      side: orderMessage.tags.Side === 'B' ? 'Buy' : 'Sell',
+      symbol: `BookID-${orderMessage.tags['Order Book ID'] || 'Unknown'}`,
+      quantity: parseInt(orderMessage.tags.Quantity || '0'),
+      price: parseFloat(orderMessage.tags.Price || '0'),
+      status: 'Pending',
+      time: orderMessage.timestamp,
+      rawData: orderMessage
     };
     
-    setMessages(prev => [...prev, newMessage]);
+    setOrders(prev => [newOrder, ...prev]);
     
-    toast({
-      title: "Message Sent",
-      description: "FIX message sent successfully"
-    });
+    // Update statistics
+    setStatistics(prev => ({
+      ...prev,
+      totalOrders: prev.totalOrders + 1,
+      pending: prev.pending + 1
+    }));
   };
 
   return (
@@ -138,7 +220,7 @@ const Index = () => {
                 📊 Orders & Transactions
               </TabsTrigger>
               <TabsTrigger value="messages" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                💬 FIX Messages
+                💬 Debug Messages
               </TabsTrigger>
             </TabsList>
             
@@ -164,6 +246,7 @@ const Index = () => {
           statistics={statistics}
           orders={orders}
           isConnected={isConnected}
+          onNewOrder={handleNewOrder}
         />
       </div>
     </div>
@@ -171,3 +254,4 @@ const Index = () => {
 };
 
 export default Index;
+export type {OUCHMessage};

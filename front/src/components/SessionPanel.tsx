@@ -10,13 +10,13 @@ interface SessionPanelProps {
 
 const SessionPanel = ({ isConnected }: SessionPanelProps) => {
   const sessionData = {
-    sessionId: "FIX.4.2-CLIENT-SERVER",
+    sessionId: "OUCH.3.0.0-CLIENT-SERVER",
     startTime: new Date().toISOString(),
     lastHeartbeat: new Date().toISOString(),
     heartbeatInterval: 30,
     incomingSeqNum: 1,
     outgoingSeqNum: 1,
-    protocol: "FIX.4.2",
+    protocol: "OUCH 3.0.0",
     senderCompId: "CLIENT",
     targetCompId: "SERVER",
     encryptionMethod: "None",

@@ -3,7 +3,7 @@ from soupbin_msgs import *
 from dotenv import load_dotenv
 import os
 import logging
-import sys, zmq, json
+import json
 from heartbeat_controller import HeartbeatController
 from ouch_msgs import OUCH_MessageFactory
 
@@ -44,7 +44,7 @@ class OuchClient(asyncio.Protocol):
             # advance 
             del self._buffer[:consumed]
             
-            self.handle_message(msg)
+            self.handle_incoming_message(msg)
 
     def connection_lost(self, exc):
         self.on_disconnect(exc)
@@ -53,7 +53,7 @@ class OuchClient(asyncio.Protocol):
         while True:
             msg = await self.send_q.get()
             frame = SoupPacketFactory.serialize(msg)
-
+    
             assert self.transport is not None 
             self.transport.write(frame)
             self.logger.debug(f"Sent: {msg}")
@@ -65,10 +65,10 @@ class OuchClient(asyncio.Protocol):
     # will send received acks and heartbeats
   
 
-    def handle_message(self, msg):
+    def handle_incoming_message(self, msg):
         """Handle incoming messages."""
-        self.logger.debug(f"Received: {msg}")
-        
+        if(msg.TYPE_ID != PacketType.SERVER_HEARTBEAT.value):
+            self.logger.debug(f"Received message: {msg}")
         if isinstance(msg, ServerHeartbeat | SequencedData | UnsequencedData):
             # Update server timestamp
             if self.hb:
@@ -76,18 +76,18 @@ class OuchClient(asyncio.Protocol):
                 self.hb.refresh_server_timestamp()
             else:
                 self.logger.warning("Heartbeat controller not initialized, skipping timestamp update")
-            self.logger.info("💓 Server heartbeat received")
+            # self.logger.info("💓 Server heartbeat received")
 
 
-        elif isinstance(msg, LoginAccepted):
+        if isinstance(msg, LoginAccepted):
             self.next_seq = msg.sequence_number
             self.logger.info("✅ Login accepted setting next seq number to " + str(self.next_seq))
 
-        elif isinstance(msg, LoginRejected):
+        if isinstance(msg, LoginRejected):
             self.logger.warning(f"❌ Login rejected: {msg.reason}")
 
          # Promote to OUCH Handlers   
-        elif isinstance(msg, SequencedData):
+        if isinstance(msg, SequencedData):
             self.logger.info(f"📊 Sequenced data: {msg}")
             ouch_msg = OUCH_MessageFactory.create_message(msg.message) # may need some slicing debug later
             
@@ -95,12 +95,15 @@ class OuchClient(asyncio.Protocol):
                 self.logger.info(f"📊 Processed OUCH message: {ouch_msg}")
 
 
-        elif isinstance(msg, UnsequencedData):
+        if isinstance(msg, UnsequencedData):
             self.logger.info(f"📈 Unsequenced data: {msg}")
-        else:
-            self.logger.warning(f"❓ Unknown message type: {type(msg)}")
+ 
+        self.send_event("message_received", {"type": "incoming", "content": str(msg)})
 
-        self.send_event("message_received", {"type": type(msg).__name__, "content": str(msg)})
+    def send_outgoing_msg(self, msg):
+        """Relay a message to the server."""
+        
+        asyncio.create_task(self.send_q.put(msg))
 
 
     def on_disconnect(self, exc):
@@ -109,3 +112,4 @@ class OuchClient(asyncio.Protocol):
     def send_event(self, event_type: str, payload: dict):
         envelope = {"type": event_type, "payload": payload}
         self.pub.send_string(json.dumps(envelope))
+

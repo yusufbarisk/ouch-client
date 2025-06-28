@@ -1,27 +1,31 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Send, X } from 'lucide-react';
+import { OUCHMessage} from '@/pages/Index';
 
-interface FixMessage {
-  id: string;
-  type: 'incoming' | 'outgoing';
-  content: string;
-  timestamp: string;
-  msgType: string;
-  tags: Record<string, string>;
-  status?: 'sent' | 'delivered' | 'error';
-}
+
 
 interface MessagesPanelProps {
-  messages: FixMessage[];
+  messages: OUCHMessage[];
   onSendMessage: (content: string) => void;
   isConnected: boolean;
-  onSelectMessage: (message: FixMessage) => void;
-  selectedMessage: FixMessage | null;
+  onSelectMessage: (message: OUCHMessage) => void;
+  selectedMessage: OUCHMessage | null;
+}
+
+function eventToOuchMessage(event: any): OUCHMessage {
+  return {
+    id: event.payload?.order_token || String(Date.now()),
+    type: 'incoming',
+    content: JSON.stringify(event.payload, null, 2),
+    timestamp: new Date().toLocaleTimeString(),
+    msgType: event.type,
+    tags: {}, 
+    status: 'delivered'
+  };
 }
 
 const MessagesPanel = ({ 
@@ -138,7 +142,7 @@ const MessagesPanel = ({
       </div>
 
       {/* Messages List */}
-      <div className="flex-1 overflow-auto p-4 space-y-2">
+      <div className="flex-1 p-4">
         {filteredMessages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             <div className="mb-2">📭</div>
@@ -151,7 +155,8 @@ const MessagesPanel = ({
             </p>
           </div>
         ) : (
-          filteredMessages.map((message) => (
+          <div className="h-full overflow-y-auto space-y-2">
+            {filteredMessages.map((message) => (
             <div
               key={message.id}
               className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
@@ -176,15 +181,16 @@ const MessagesPanel = ({
               <div className="font-mono text-sm text-gray-800 bg-gray-50 p-2 rounded break-all">
                 {message.content}
               </div>
-              {message.status && (
+              {/* {message.status && (
                 <div className="mt-2">
                   <Badge variant="outline" className="text-xs">
                     {message.status}
                   </Badge>
                 </div>
-              )}
+              )} */}
             </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
@@ -211,5 +217,8 @@ const MessagesPanel = ({
     </div>
   );
 };
+
+export type { OUCHMessage };
+export { eventToOuchMessage };
 
 export default MessagesPanel;

@@ -582,6 +582,24 @@ class OUCH_MessageFactory:
         elif type_id == OUCH_OUTBOUND_MSG_TYPE.MASS_QUOTE.value:
             return MassQuote.from_soupbin(data[1:])
         
+        elif type_id == OUCH_INBOUND_MSG_TYPE.ORDER_ACK.value:
+            return OrderAck.from_soupbin(data[1:])
+        # elif type_id == OUCH_INBOUND_MSG_TYPE.ORDER_REJECT.value:
+        #     return OrderReject.from_soupbin(data[1:])
+        elif type_id == OUCH_INBOUND_MSG_TYPE.ORDER_REPLACE_ACK.value:
+            return OrderReplaceAck.from_soupbin(data[1:])
+        elif type_id == OUCH_INBOUND_MSG_TYPE.ORDER_CANCEL_ACK.value:
+            return OrderCancelAck.from_soupbin(data[1:])
+        elif type_id == OUCH_INBOUND_MSG_TYPE.ORDER_EXECUTED.value:
+            return OrderExecuted.from_soupbin(data[1:])
+        elif type_id == OUCH_INBOUND_MSG_TYPE.MASS_QUOTE_ACK.value:
+            return MassQuoteAck.from_soupbin(data[1:])
+        elif type_id == OUCH_INBOUND_MSG_TYPE.MASS_QUOTE_REJECT.value:
+            return MassQuoteReject.from_soupbin(data[1:])
+        else:
+            raise ValueError(f"Unknown OUCH message type: {type_id}")    
+
+
     @classmethod
     def serialize(cls, pkt) -> bytes:
         body = pkt.to_bytes()

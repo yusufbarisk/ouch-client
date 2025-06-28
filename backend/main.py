@@ -7,18 +7,28 @@ from heartbeat_controller import HeartbeatController
 import logging
 from transport import OuchClient
 import sys
+from util import create_ouch_message_from_json
+from soupbin_msgs import SequencedData, UnsequencedData
 
-
-
-
-async def handle_incoming_requests(rep):
-        while True:
-            msg = rep.recv_string()
-            req = json.loads(msg)
-            # process req, e.g. { "action": "cancel", "orderId": 123 }
-            resp = {"status": "ok"}
-            rep.send_string(json.dumps(resp))
-
+async def handle_front_to_back(sub, client: OuchClient):
+    while True:
+        try:
+            msg = await sub.recv_string()
+            data = json.loads(msg)
+            
+            ouch_msg = create_ouch_message_from_json(data)
+            if ouch_msg is None:
+                logging.error(f"Received invalid ouch message: {data}")
+                continue
+            
+            ouch_payload = ouch_msg.TYPE_ID + ouch_msg.to_soupbin()
+            
+            sequenced_packet = UnsequencedData(message=ouch_payload)
+            
+            client.send_outgoing_msg(sequenced_packet)
+            
+        except Exception as e:
+            logging.error(f"Error handling frontend message: {e}")
 
 async def main():
     # Load environment variables
@@ -47,16 +57,16 @@ async def main():
         pass
     pub.bind(f"ipc://{ipc_path}")
 
-    # REP socket for frontend → backend
-    rep = ctx.socket(zmq.REP)
-    rep.bind("ipc:///tmp/ouch-ipc-reqrep.sock")
+    # SUB socket for frontend → backend
+    sub = ctx.socket(zmq.SUB)
+    sub.connect("ipc:///tmp/ouch-ipc-orders.sock")
+    sub.setsockopt_string(zmq.SUBSCRIBE, "") 
 
-    asyncio.create_task(handle_incoming_requests(rep=rep)) # start handling
+    client = OuchClient(pub=pub)
+    HeartbeatController(client)
 
-    def factory() -> OuchClient:
-        client = OuchClient(pub=pub)
-        HeartbeatController(client)  # Initialize heartbeat controller
-        return client
+    asyncio.create_task(handle_front_to_back(sub=sub, client=client)) # start handling
+
     
     if not host_addr or not hport:
         raise ValueError("HOST_ADDR and HOST_PORT must be set in the environment variables")
@@ -65,7 +75,7 @@ async def main():
     
     root.debug(f"Connecting to {host_addr}:{hport}")
     await loop.create_connection(
-        lambda: factory(),  
+        lambda: client,  
         host=str(host_addr), port=int(hport))
     
     await asyncio.Event().wait()

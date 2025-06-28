@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Search, Filter, X, ChevronDown, ChevronRight, Info } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -16,6 +17,22 @@ interface Order {
   price: number;
   status: 'Pending' | 'Filled' | 'Rejected' | 'Partial';
   time: string;
+  ackMessage?: {
+    id: string;
+    content: string;
+    timestamp: string;
+    type: 'ack' | 'reject';
+  };
+  fillOrder?: {
+    id: string;
+    side: 'Buy' | 'Sell';
+    symbol: string;
+    quantity: number;
+    price: number;
+    timestamp: string;
+    counterparty: string;
+  };
+  rawData?: any; // For detailed inspection
 }
 
 interface OrdersAndTransactionsProps {
@@ -31,6 +48,8 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
   const [maxPrice, setMaxPrice] = useState('');
   const [minQty, setMinQty] = useState('');
   const [maxQty, setMaxQty] = useState('');
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,6 +66,16 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
     return matchesSearch && matchesStatus && matchesSide && 
            matchesMinPrice && matchesMaxPrice && matchesMinQty && matchesMaxQty;
   });
+
+  const toggleOrderExpansion = (orderId: string) => {
+    const newExpanded = new Set(expandedOrders);
+    if (newExpanded.has(orderId)) {
+      newExpanded.delete(orderId);
+    } else {
+      newExpanded.add(orderId);
+    }
+    setExpandedOrders(newExpanded);
+  };
 
   const clearFilters = () => {
     setStatusFilter('all');
@@ -70,6 +99,62 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
 
   const getSideColor = (side: string) => {
     return side === 'Buy' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+  };
+
+  const canExpand = (order: Order) => {
+    return (order.status === 'Pending' && order.ackMessage) || 
+           (order.status === 'Filled' && (order.ackMessage || order.fillOrder));
+  };
+
+  const renderExpandedContent = (order: Order) => {
+    const isExpanded = expandedOrders.has(order.id);
+    if (!isExpanded) return null;
+
+    return (
+      <>
+        {/* ACK Message Row */}
+        {order.ackMessage && (
+          <TableRow className="bg-blue-50">
+            <TableCell className="pl-8 text-xs text-gray-600" colSpan={2}>
+              📨 ACK Message
+            </TableCell>
+            <TableCell className="text-xs" colSpan={3}>
+              <div className="font-mono text-xs bg-white p-2 rounded border">
+                {order.ackMessage.content}
+              </div>
+            </TableCell>
+            <TableCell className="text-xs">
+              <Badge variant="outline" className={order.ackMessage.type === 'ack' ? 'text-green-600' : 'text-red-600'}>
+                {order.ackMessage.type.toUpperCase()}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-xs text-gray-500">{order.ackMessage.timestamp}</TableCell>
+            <TableCell></TableCell>
+          </TableRow>
+        )}
+        
+        {/* Fill Order Row */}
+        {order.fillOrder && order.status === 'Filled' && (
+          <TableRow className="bg-green-50">
+            <TableCell className="pl-8 text-xs text-gray-600" colSpan={2}>
+              🔄 Fill Order
+            </TableCell>
+            <TableCell className={`text-xs ${getSideColor(order.fillOrder.side)}`}>
+              {order.fillOrder.side}
+            </TableCell>
+            <TableCell className="text-xs font-medium">{order.fillOrder.symbol}</TableCell>
+            <TableCell className="text-xs">{order.fillOrder.quantity.toLocaleString()}</TableCell>
+            <TableCell className="text-xs">${order.fillOrder.price.toFixed(2)}</TableCell>
+            <TableCell className="text-xs">
+              <Badge className="bg-purple-100 text-purple-800">
+                {order.fillOrder.counterparty}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-xs text-gray-500">{order.fillOrder.timestamp}</TableCell>
+          </TableRow>
+        )}
+      </>
+    );
   };
 
   return (
@@ -182,6 +267,7 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
         <Table>
           <TableHeader className="sticky top-0 bg-slate-50">
             <TableRow>
+              <TableHead className="font-semibold w-8"></TableHead>
               <TableHead className="font-semibold">Order ID</TableHead>
               <TableHead className="font-semibold">Type</TableHead>
               <TableHead className="font-semibold">Side</TableHead>
@@ -195,7 +281,7 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
           <TableBody>
             {filteredOrders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                   {orders.length === 0 
                     ? "No orders found. Start by connecting to FIX server."
                     : "No orders match your search criteria."
@@ -204,22 +290,137 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
               </TableRow>
             ) : (
               filteredOrders.map((order) => (
-                <TableRow key={order.id} className="hover:bg-gray-50">
-                  <TableCell className="font-mono text-sm">{order.id}</TableCell>
-                  <TableCell>{order.type}</TableCell>
-                  <TableCell className={getSideColor(order.side)}>
-                    {order.side}
-                  </TableCell>
-                  <TableCell className="font-medium">{order.symbol}</TableCell>
-                  <TableCell>{order.quantity.toLocaleString()}</TableCell>
-                  <TableCell>${order.price.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(order.status)}>
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">{order.time}</TableCell>
-                </TableRow>
+                <React.Fragment key={order.id}>
+                  <TableRow className="hover:bg-gray-50">
+                    <TableCell className="w-8">
+                      {canExpand(order) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleOrderExpansion(order.id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          {expandedOrders.has(order.id) ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{order.id}</TableCell>
+                    <TableCell>{order.type}</TableCell>
+                    <TableCell className={getSideColor(order.side)}>
+                      {order.side}
+                    </TableCell>
+                    <TableCell className="font-medium">{order.symbol}</TableCell>
+                    <TableCell>{order.quantity.toLocaleString()}</TableCell>
+                    <TableCell>${order.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      <div className="flex items-center space-x-2">
+                        <span>{order.time}</span>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-blue-100"
+                              onClick={() => setSelectedOrderDetails(order)}
+                            >
+                              <Info className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Order Details - {order.id}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Order ID</label>
+                                  <div className="font-mono text-sm bg-gray-50 p-2 rounded">{order.id}</div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Status</label>
+                                  <div>
+                                    <Badge className={getStatusColor(order.status)}>
+                                      {order.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Symbol</label>
+                                  <div className="font-medium">{order.symbol}</div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Side</label>
+                                  <div className={getSideColor(order.side)}>{order.side}</div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Quantity</label>
+                                  <div>{order.quantity.toLocaleString()}</div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Price</label>
+                                  <div>${order.price.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Type</label>
+                                  <div>{order.type}</div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Time</label>
+                                  <div>{order.time}</div>
+                                </div>
+                              </div>
+                              
+                              {order.ackMessage && (
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">ACK Message</label>
+                                  <div className="font-mono text-sm bg-blue-50 p-3 rounded border">
+                                    <div className="mb-2 text-xs text-gray-600">
+                                      Type: {order.ackMessage.type.toUpperCase()} | Time: {order.ackMessage.timestamp}
+                                    </div>
+                                    {order.ackMessage.content}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {order.fillOrder && (
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Fill Details</label>
+                                  <div className="bg-green-50 p-3 rounded border">
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      <div><strong>Counterparty:</strong> {order.fillOrder.counterparty}</div>
+                                      <div><strong>Fill Time:</strong> {order.fillOrder.timestamp}</div>
+                                      <div><strong>Fill Side:</strong> <span className={getSideColor(order.fillOrder.side)}>{order.fillOrder.side}</span></div>
+                                      <div><strong>Fill Price:</strong> ${order.fillOrder.price.toFixed(2)}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {order.rawData && (
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700">Raw Data</label>
+                                  <pre className="font-mono text-xs bg-gray-50 p-3 rounded border overflow-x-auto">
+                                    {JSON.stringify(order.rawData, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {renderExpandedContent(order)}
+                </React.Fragment>
               ))
             )}
           </TableBody>

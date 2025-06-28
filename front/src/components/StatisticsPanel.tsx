@@ -47,7 +47,7 @@ const StatisticsPanel = ({ statistics, orders }: StatisticsPanelProps) => {
     .slice(0, 5);
 
   return (
-    <div className="max-h-[calc(100vh-200px)] overflow-auto p-6 bg-slate-50 space-y-6">
+    <div className="h-full overflow-auto p-6 bg-slate-50 space-y-6">
       {/* Main Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StatisticsCard
