@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, Filter, X, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { Search, Filter, X, ChevronDown, ChevronRight, Info, XCircle, RotateCcw } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -15,7 +14,7 @@ interface Order {
   symbol: string;
   quantity: number;
   price: number;
-  status: 'Pending' | 'Filled' | 'Rejected' | 'Partial';
+  status: 'Pending' | 'Filled' | 'Rejected' | 'Partial' | 'Cancelled';
   time: string;
   ackMessage?: {
     id: string;
@@ -37,9 +36,12 @@ interface Order {
 
 interface OrdersAndTransactionsProps {
   orders: Order[];
+  onSelectOrder?: (order: Order) => void;
+  onCancelOrder?: (order: Order) => void;
+  onReplaceOrder?: (order: Order) => void;
 }
 
-const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
+const OrdersAndTransactions = ({ orders, onSelectOrder, onCancelOrder, onReplaceOrder }: OrdersAndTransactionsProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -49,7 +51,7 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
   const [minQty, setMinQty] = useState('');
   const [maxQty, setMaxQty] = useState('');
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
-  const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
+  // Remove the selectedOrderDetails state as it's now handled by the parent
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -324,98 +326,32 @@ const OrdersAndTransactions = ({ orders }: OrdersAndTransactionsProps) => {
                     <TableCell className="text-sm text-gray-600">
                       <div className="flex items-center space-x-2">
                         <span>{order.time}</span>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 hover:bg-blue-100"
-                              onClick={() => setSelectedOrderDetails(order)}
-                            >
-                              <Info className="h-4 w-4 text-blue-600" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>Order Details - {order.id}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Order ID</label>
-                                  <div className="font-mono text-sm bg-gray-50 p-2 rounded">{order.id}</div>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Status</label>
-                                  <div>
-                                    <Badge className={getStatusColor(order.status)}>
-                                      {order.status}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Symbol</label>
-                                  <div className="font-medium">{order.symbol}</div>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Side</label>
-                                  <div className={getSideColor(order.side)}>{order.side}</div>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Quantity</label>
-                                  <div>{order.quantity.toLocaleString()}</div>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Price</label>
-                                  <div>${order.price.toFixed(2)}</div>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Type</label>
-                                  <div>{order.type}</div>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Time</label>
-                                  <div>{order.time}</div>
-                                </div>
-                              </div>
-                              
-                              {order.ackMessage && (
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">ACK Message</label>
-                                  <div className="font-mono text-sm bg-blue-50 p-3 rounded border">
-                                    <div className="mb-2 text-xs text-gray-600">
-                                      Type: {order.ackMessage.type.toUpperCase()} | Time: {order.ackMessage.timestamp}
-                                    </div>
-                                    {order.ackMessage.content}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {order.fillOrder && (
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Fill Details</label>
-                                  <div className="bg-green-50 p-3 rounded border">
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                      <div><strong>Counterparty:</strong> {order.fillOrder.counterparty}</div>
-                                      <div><strong>Fill Time:</strong> {order.fillOrder.timestamp}</div>
-                                      <div><strong>Fill Side:</strong> <span className={getSideColor(order.fillOrder.side)}>{order.fillOrder.side}</span></div>
-                                      <div><strong>Fill Price:</strong> ${order.fillOrder.price.toFixed(2)}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {order.rawData && (
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Raw Data</label>
-                                  <pre className="font-mono text-xs bg-gray-50 p-3 rounded border overflow-x-auto">
-                                    {JSON.stringify(order.rawData, null, 2)}
-                                  </pre>
-                                </div>
-                              )}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-100"
+                            onClick={() => onSelectOrder?.(order)}
+                          >
+                            <Info className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-red-100"
+                            onClick={() => onCancelOrder?.(order)}
+                          >
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-orange-100"
+                            onClick={() => onReplaceOrder?.(order)}
+                          >
+                            <RotateCcw className="h-4 w-4 text-orange-600" />
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>

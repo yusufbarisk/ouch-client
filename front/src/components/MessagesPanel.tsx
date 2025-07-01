@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Send, X } from 'lucide-react';
+import { Search, Filter, Send, X, Info, XCircle, Edit } from 'lucide-react';
 import { OUCHMessage} from '@/pages/Index';
 
 
@@ -14,6 +14,8 @@ interface MessagesPanelProps {
   isConnected: boolean;
   onSelectMessage: (message: OUCHMessage) => void;
   selectedMessage: OUCHMessage | null;
+  onCancelOrder?: (orderId: string) => void;
+  onReplaceOrder?: (orderId: string) => void;
 }
 
 function eventToOuchMessage(event: any): OUCHMessage {
@@ -33,7 +35,9 @@ const MessagesPanel = ({
   onSendMessage, 
   isConnected, 
   onSelectMessage, 
-  selectedMessage 
+  selectedMessage,
+  onCancelOrder,
+  onReplaceOrder
 }: MessagesPanelProps) => {
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -176,7 +180,48 @@ const MessagesPanel = ({
                   </Badge>
                   <span className="text-xs text-gray-500">{message.id}</span>
                 </div>
-                <span className="text-xs text-gray-500">{message.timestamp}</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-gray-500">{message.timestamp}</span>
+                  
+                  {/* Action buttons for orders */}
+                  {(message.msgType === 'enter_order' || message.msgType === 'replace_order') && (
+                    <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-blue-100"
+                        onClick={() => onSelectMessage(message)}
+                        title="View Details"
+                      >
+                        <Info className="h-3 w-3 text-blue-600" />
+                      </Button>
+                      
+                      {onCancelOrder && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 hover:bg-red-100"
+                          onClick={() => onCancelOrder(message.id)}
+                          title="Cancel Order"
+                        >
+                          <XCircle className="h-3 w-3 text-red-600" />
+                        </Button>
+                      )}
+                      
+                      {onReplaceOrder && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 hover:bg-orange-100"
+                          onClick={() => onReplaceOrder(message.id)}
+                          title="Replace Order"
+                        >
+                          <Edit className="h-3 w-3 text-orange-600" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="font-mono text-sm text-gray-800 bg-gray-50 p-2 rounded break-all">
                 {message.content}
@@ -198,7 +243,7 @@ const MessagesPanel = ({
       <div className="p-4 border-t border-slate-200">
         <div className="flex space-x-2">
           <Input
-            placeholder={isConnected ? "Enter FIX message..." : "Connect to send messages"}
+            placeholder={isConnected ? "Enter OUCH message..." : "Connect to send messages"}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}

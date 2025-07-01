@@ -48,14 +48,14 @@ const ConnectionDialog = ({ onConnect }: ConnectionDialogProps) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Server className="w-5 h-5" />
-            Connect to FIXT.1.1 Server
+            Connect to OUCH 3.0.0 Server
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <h3 className="font-semibold text-orange-800 mb-2">FIXT.1.1</h3>
-            <p className="text-sm text-orange-700">Fixed Transport Layer with FIX50SP2 Application Messages</p>
+            <h3 className="font-semibold text-orange-800 mb-2">OUCH 3.0.0</h3>
+            <p className="text-sm text-orange-700">OUCH 3.0.0 Protocol</p>
           </div>
 
           <div className="space-y-4">

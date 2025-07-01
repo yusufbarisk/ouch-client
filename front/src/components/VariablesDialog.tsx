@@ -71,10 +71,10 @@ const VariablesDialog = ({ onSave }: VariablesDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 bg-slate-700 ">
+        {/* <Button variant="outline" size="sm" className="gap-2 bg-slate-700 ">
           <Variable className="w-4 h-4" />
           FIX Variables
-        </Button>
+        </Button> */}
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
