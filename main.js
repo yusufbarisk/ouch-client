@@ -2,13 +2,26 @@ const { app, BrowserWindow } = require('electron')
 const zmq = require("zeromq");
 
 let mainWindow = null;
+let HEARTBEAT_INTERVAL = 5;
+let heartbeatTimer = null;
+let isConnected = false;
 
 ///////////////////////////////////////////////////////
 // Setup SUB socket to send orders to the backend
 /////////////////////////////////////////////////////////
 
+function handleBackendDisconnect() {
+  console.log("No backend events received for", HEARTBEAT_INTERVAL, "seconds. Marking as disconnected.");
+  if (mainWindow) {
+    mainWindow.webContents.send('backend-disconnected');
+  }
+  isConnected = false;
+}
+
 async function subscribeToEvents() {
   const sock = new zmq.Subscriber();
+  heartbeatTimer = setTimeout(handleBackendDisconnect, HEARTBEAT_INTERVAL * 1000);
+
 
   // Connect to the Python PUB socket
   sock.connect("ipc:///tmp/ouch-ipc.sock");
@@ -21,8 +34,14 @@ async function subscribeToEvents() {
     // if(!event.payload.content == "ServerHeartbeat()"){
     //   console.log("Received event:", event);
     // }
-    console.log("Received event:", event);
+    if (heartbeatTimer) clearTimeout(heartbeatTimer);
+    heartbeatTimer = setTimeout(handleBackendDisconnect, HEARTBEAT_INTERVAL * 1000);
 
+    console.log("Received event:", event);
+    if (!isConnected && mainWindow) {
+      mainWindow.webContents.send('backend-connected');
+      isConnected = true;
+    }
     if (mainWindow) {
       mainWindow.webContents.send('backend-event', event);
     }

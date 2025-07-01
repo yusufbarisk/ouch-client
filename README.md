@@ -13,3 +13,6 @@ client for ouch bist
 TODO
 
 make a synced queue where orders get deleted only when the ACK has arrived could make it persistent over time idk.
+
+
+Obviously the current prefill data etc are held in memory. On more established use cases a local db would be much more preferable. 

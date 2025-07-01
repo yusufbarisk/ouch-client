@@ -32,6 +32,16 @@ interface Order {
     counterparty: string;
   };
   rawData?: any; // For detailed inspection
+
+  orderBookId?: string;
+  displayQty?: number;
+  timeInForce?: number;
+  openClose?: number;
+  clientCat?: number;
+  offHours?: number;
+  clientAccount?: string;
+  customerInfo?: string;
+  exchangeInfo?: string;
 }
 
 interface OrdersAndTransactionsProps {

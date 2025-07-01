@@ -80,12 +80,12 @@ const TagsPanel = ({ selectedMessage }: TagsPanelProps) => {
       <div className="p-4 border-b border-slate-200">
         <h3 className="text-lg font-semibold text-gray-800">🏷️ Message Tags</h3>
         <div className="flex items-center space-x-2 mt-2">
-          {/* <Badge className={selectedMessage.type === 'incoming' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
+          <Badge className={selectedMessage.type === 'incoming' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
             {selectedMessage.type === 'incoming' ? '📨 IN' : '📤 OUT'}
           </Badge>
           <Badge variant="outline">
             {selectedMessage.msgType}
-          </Badge> */}
+          </Badge>
         </div>
       </div>
 

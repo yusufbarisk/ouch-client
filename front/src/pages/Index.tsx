@@ -13,10 +13,23 @@ interface Order {
   type: string;
   side: 'Buy' | 'Sell';
   symbol: string;
-  quantity: number;
+  quantity: number;  
   price: number;
   status: 'Pending' | 'Filled' | 'Rejected' | 'Partial' | 'Cancelled';
   time: string;
+
+  // For prefill storing
+  order_book_id?: string;
+  displayQuantity?: number;
+  timeInForce?: number;
+  openClose?: number;
+  clientCategory?: number;
+  offHours?: number;
+  clientAccount?: string;
+  customerInfo?: string;
+  exchangeInfo?: string;
+
+
   ackMessage?: {
     id: string;
     content: string;
@@ -32,7 +45,7 @@ interface Order {
     timestamp: string;
     counterparty: string;
   };
-  rawData?: any; // For detailed inspection
+  rawData?: any;
 }
 
 interface OUCHMessage {
@@ -67,6 +80,15 @@ const Index = () => {
   const [orderPrefillData, setOrderPrefillData] = useState<{
     originalOrderId?: string;
     newOrderId?: string;
+    orderBookId?: number;
+    displayQty?: number;
+    timeInForce?: number;
+    openClose?: number;
+    clientCat?: number;
+    offHours?: number;
+    clientAccount?: string;
+    customerInfo?: string;
+    exchangeInfo?: string;
     side?: string;
     symbol?: string;
     quantity?: number;
@@ -151,11 +173,21 @@ const Index = () => {
   };
 
   const handleDisconnect = () => {
-    setIsConnected(false);
-    toast({
-      title: "🔴 Disconnected",
-      description: "Disconnected from OUCH server",
-      variant: "destructive"
+    window.electronAPI?.onBackendConnected(() => {
+      setIsConnected(true);
+      toast({
+        title: "🟢 Connected Successfully",
+        description: "Successfully connected to OUCH server",
+        className: "bg-emerald-50 border-emerald-200 text-emerald-800"
+      });
+    });
+    window.electronAPI?.onBackendDisconnected( () => {
+      setIsConnected(false);
+      toast({
+        title: "🔴 Disconnected",
+        description: "Disconnected from OUCH server",
+        variant: "destructive"
+      });    
     });
   };
 
@@ -175,7 +207,7 @@ const Index = () => {
               order.id === ack.order_token
                 ? {
                     ...order,
-                    status: "Filled",
+                    status: "Pending",
                     ackMessage: {
                       id: ack.order_token,
                       content: JSON.stringify(ack, null, 2),
@@ -290,6 +322,8 @@ const Index = () => {
       return newMessages;
     });
 
+    const tags = orderMessage.tags || {};
+
     const newOrder: Order = {
       id: orderMessage.id,
       type: 'Limit',
@@ -299,7 +333,17 @@ const Index = () => {
       price: parseFloat(orderMessage.tags.Price || '0'),
       status: 'Pending',
       time: orderMessage.timestamp,
-      rawData: orderMessage
+      rawData: orderMessage,
+
+      order_book_id: tags['Order Book ID'] || '',
+      displayQuantity: tags['Display Quantity'] ? Number(tags['Display Quantity']) : undefined,
+      timeInForce: tags['Time In Force'] ? Number(tags['Time In Force']) : undefined,
+      openClose: tags['Open/Close'] ? Number(tags['Open/Close']) : undefined,
+      clientCategory: tags['Client Category'] ? Number(tags['Client Category']) : undefined,
+      offHours: tags['Off Hours'] ? Number(tags['Off Hours']) : undefined,
+      clientAccount: tags['Client Account'] || '',
+      customerInfo: tags['Customer Info'] || '',
+      exchangeInfo: tags['Exchange Info'] || '',
     };
     
     setOrders(prev => [newOrder, ...prev]);
@@ -349,10 +393,18 @@ const Index = () => {
       ? order.id.replace('ORD', 'R_')
       : `R_${order.id.substring(2)}`; // Fallback if doesn't start with ORD
     
-    // Create pre-filled order data for the order entry panel
     const prefillData = {
       originalOrderId: order.id,
       newOrderId: newOrderId,
+      orderBookId: order.order_book_id ? Number(order.order_book_id) : undefined,
+      displayQty: order.displayQuantity,
+      timeInForce: order.timeInForce,
+      openClose: order.openClose,
+      clientCat: order.clientCategory,
+      offHours: order.offHours,
+      clientAccount: order.clientAccount,
+      customerInfo: order.customerInfo,
+      exchangeInfo: order.exchangeInfo,
       side: order.side,
       symbol: order.symbol,
       quantity: order.quantity,
@@ -360,7 +412,7 @@ const Index = () => {
       type: order.type,
       isReplace: true
     };
-    
+      
     setOrderPrefillData(prefillData);
     
     toast({
@@ -371,7 +423,6 @@ const Index = () => {
     console.log('Prefill data for replace order:', prefillData);
   };
 
-  // Wrapper functions for MessagesPanel (which passes orderId strings)
   const handleCancelOrderById = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
@@ -409,7 +460,7 @@ const Index = () => {
       />
       
       <div className="flex-1 flex overflow-hidden">
-        {/* Main Content Area */}
+        {/* Main */}
         <div className="flex-1 flex flex-col">
           <Tabs defaultValue="orders" className="flex-1 flex flex-col">
             <TabsList className="w-full justify-start bg-white border-b border-slate-200 rounded-none px-4">
