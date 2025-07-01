@@ -148,12 +148,37 @@ const Index = () => {
 
 
   useEffect(() => {
-    // @ts-ignore
-    window.electronAPI?.onBackendEvent((data) => {
-      setEvents(prev => [...prev, data]);
-      setMessages(prev => [...prev, eventToOuchMessage(data)]);
-    });
-  }, []);
+  // @ts-ignore
+  window.electronAPI?.onBackendEvent((data) => {
+    setEvents(prev => [...prev, data]);
+    setMessages(prev => [...prev, eventToOuchMessage(data)]);
+
+    
+    if (data.type && data.type.startsWith("Type: A")) {
+      const ack = data.payload;
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === ack.order_token
+            ? {
+                ...order,
+                status: "Filled", 
+                ackMessage: {
+                  id: ack.order_token,
+                  content: JSON.stringify(ack, null, 2),
+                  timestamp: new Date().toLocaleTimeString(),
+                  type: "ack"
+                },
+                rawData: ack
+              }
+            : order
+        )
+      );
+    }
+    // rejects &  fills 
+  });
+}, []);
+
+
 
   const handleSendMessage = (content: string) => {
     

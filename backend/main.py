@@ -66,7 +66,7 @@ async def main():
     HeartbeatController(client)
 
     asyncio.create_task(handle_front_to_back(sub=sub, client=client)) # start handling
-
+    
     
     if not host_addr or not hport:
         raise ValueError("HOST_ADDR and HOST_PORT must be set in the environment variables")

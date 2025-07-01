@@ -88,17 +88,19 @@ class OuchClient(asyncio.Protocol):
 
          # Promote to OUCH Handlers   
         if isinstance(msg, SequencedData):
-            self.logger.info(f"📊 Sequenced data: {msg}")
+            # self.logger.info(f"📊 Sequenced data: {msg}")
             ouch_msg = OUCH_MessageFactory.create_message(msg.message) # may need some slicing debug later
             
             if ouch_msg:
                 self.logger.info(f"📊 Processed OUCH message: {ouch_msg}")
 
+                payload = {k: v for k, v in ouch_msg.__dict__.items() if k != "reserved_bits"}
+                self.send_event("Type: " + ouch_msg.TYPE_ID.decode(), payload)
 
         if isinstance(msg, UnsequencedData):
             self.logger.info(f"📈 Unsequenced data: {msg}")
  
-        self.send_event("message_received", {"type": "incoming", "content": str(msg)})
+        # self.send_event("message_received", {"type": "incoming", "content": str(msg)})
 
     def send_outgoing_msg(self, msg):
         """Relay a message to the server."""
@@ -111,5 +113,6 @@ class OuchClient(asyncio.Protocol):
 
     def send_event(self, event_type: str, payload: dict):
         envelope = {"type": event_type, "payload": payload}
+        json_str = json.dumps(envelope)
+        self.logger.debug(f"Sending event: {json_str}")
         self.pub.send_string(json.dumps(envelope))
-

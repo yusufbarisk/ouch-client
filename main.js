@@ -18,9 +18,11 @@ async function subscribeToEvents() {
   
   for await (const [msg] of sock) {
     const event = JSON.parse(msg.toString());
-    if(!event.payload.content == "ServerHeartbeat()"){
-      console.log("Received event:", event);
-    }
+    // if(!event.payload.content == "ServerHeartbeat()"){
+    //   console.log("Received event:", event);
+    // }
+    console.log("Received event:", event);
+
     if (mainWindow) {
       mainWindow.webContents.send('backend-event', event);
     }
