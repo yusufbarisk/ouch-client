@@ -1,0 +1,46 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "python",
+      "request": "launch",
+      "name": "Python: Backend Server",
+      "program": "${workspaceFolder}/backend/test_server_ouch.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "python",
+      "request": "launch",
+      "name": "Python: Client (main.py)",
+      "program": "${workspaceFolder}/backend/main.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Electron: Frontend Client",
+      "program": "${workspaceFolder}/main.js",
+      "runtimeExecutable": "npm",
+      "args": [
+        "run front"
+      ],
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "linux": {
+        "runtimeExecutable": "electron"
+      },
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug: Server, Client & Electron",
+      "configurations": [
+        "Python: Backend Server",
+        "Python: Client (main.py)",
+        // "Electron: Frontend Client"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,9 @@
 # 🚀 ouch-client
 
+<p align="center">
+  <img src="./assets/demo.gif" alt="OUCH Client Demo" width="90%"/>
+</p>
+
 A modern, professional OUCH 3.0.0 protocol client for BIST, built with ❤️ for traders, testers, and protocol enthusiasts!
 
 ---
