@@ -10,7 +10,7 @@ A modern, professional OUCH 3.0.0 protocol client for BIST, built with ❤️ fo
 
 ### 📝 Description
 
-OUCH Client is a cross-platform, modern, and hackable client for the OUCH 3.0.0 protocol, designed for BIST and similar trading venues. It features a beautiful UI, persistent connection profiles, real-time backend, and a built-in Python test server. Perfect for algo devs, testers, and anyone who wants to play with OUCH! 💹
+OUCH Client is a cross-platform client for the OUCH 3.0.0 (BIST) protocol, designed for BIST and similar trading venues. It features a UI, persistent connection profiles, real-time backend, and a built-in Python test server. Perfect for algo devs, testers, and anyone who wants to play with OUCH ig.
 
 ---
 
