@@ -71,6 +71,19 @@ class LoginRejected:
         return cls(reason=reason)
 
 @dataclass
+class LogoutRequest:
+    TYPE_ID: ClassVar[bytes] = b'O'
+
+    def to_bytes(self) -> bytes:
+        return self.TYPE_ID
+    
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "LogoutRequest":
+        if data != cls.TYPE_ID:
+            raise ValueError("Invalid LogoutRequest data")
+        return cls()
+
+@dataclass
 class SequencedData:
     TYPE_ID: ClassVar[bytes] = PacketType.SEQUENCED_DATA.value
     message: bytes

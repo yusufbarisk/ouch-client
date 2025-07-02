@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,21 +6,34 @@ import ConnectionDialog from './ConnectionDialog';
 import VariablesDialog from './VariablesDialog';
 import SettingsDialog from './SettingsDialog';
 import HelpDialog from './HelpDialog';
+import { on } from 'events';
+import { set } from 'date-fns';
 
 interface HeaderProps {
   isConnected: boolean;
-  onConnect: () => void;
+  onConnect: (config?: any) => void;
   onDisconnect: () => void;
 }
 
 const Header = ({ isConnected, onConnect, onDisconnect }: HeaderProps) => {
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+
   const handleConnectionConfig = (config: any) => {
     console.log('Connection config:', config);
-    onConnect();
+    
+    onConnect(config); 
+    setIsDialogOpen(false); 
   };
 
   const handleVariablesSave = (variables: any[]) => {
     console.log('Variables saved:', variables);
+    // Save variables to localStorage for persistence
+    try {
+      localStorage.setItem('ouch-client-variables', JSON.stringify(variables));
+    } catch (error) {
+      console.error('Failed to save variables:', error);
+    }
   };
 
   return (
@@ -62,7 +74,11 @@ const Header = ({ isConnected, onConnect, onDisconnect }: HeaderProps) => {
         </div>
         
         <div className="flex items-center space-x-3">
-          <ConnectionDialog onConnect={handleConnectionConfig} />
+          <ConnectionDialog
+            onConnect={handleConnectionConfig} 
+            isOpen={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+          />
           
           <VariablesDialog onSave={handleVariablesSave} />
           
@@ -71,7 +87,13 @@ const Header = ({ isConnected, onConnect, onDisconnect }: HeaderProps) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={isConnected ? onDisconnect : onConnect}
+            onClick={() => {
+              if (isConnected) {
+                onDisconnect();
+              } else {
+                setIsDialogOpen(true);
+              }
+            }}
             className={`border-2 transition-all duration-200 ${
               isConnected 
                 ? 'border-red-500 text-red-400 hover:bg-red-500 hover:text-white' 

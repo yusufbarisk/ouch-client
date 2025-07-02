@@ -104,90 +104,50 @@ const Index = () => {
   });
   const { toast } = useToast();
 
-  const handleConnect = () => {
-    // Check connection parameters (e.g., server URL, credentials)
-    // retrieve from dialog
+  
+  const handleConnect = (config: any) => {
+    if (!config) {
+      toast({
+        title: "❌ No Config Provided",
+        description: "Please fill out the connection dialog.",
+        variant: "destructive"
+      });
+      return;
+    }
+    window.electronAPI?.sendConnectionConfig(config);
 
-
-    setIsConnected(true);
-    toast({
-      title: "🟢 Connected Successfully",
-      description: "Successfully connected to FIX server",
-      className: "bg-emerald-50 border-emerald-200 text-emerald-800"
+    window.electronAPI?.onConnectionConfigResponse((response) => {
+      if (response.success) {
+        setIsConnected(true);
+        toast({
+          title: "🟢 Connected Successfully",
+          description: "Successfully connected to OUCH server",
+          className: "bg-emerald-50 border-emerald-200 text-emerald-800"
+        });
+      } else {
+        toast({
+          title: "❌ Connection Failed",
+          description: response.error || "Failed to connect",
+          variant: "destructive"
+        });
+      }
     });
-    
-    // // Simulate receiving initial data
-    // setTimeout(() => {
 
-    //   const ackMessage: Order['ackMessage'] = {
-    //     id: "ACK001",
-    //     content: "Order acknowledged",
-    //     timestamp: new Date().toLocaleTimeString(),
-    //     type: "ack",
-    //   }
-
-    //   const fillOrder: Order['fillOrder'] = {
-    //     id: "FILL001",
-    //     side: "Buy",
-    //     symbol: "AAPL",
-    //     quantity: 100,
-    //     price: 150.25,
-    //     timestamp: new Date().toLocaleTimeString(),
-    //     counterparty: "BrokerXYZ"
-    //   };
-    //   const sampleOrder: Order = {
-    //     id: "ORD001",
-    //     type: "Market",
-    //     side: "Buy",
-    //     symbol: "AAPL",
-    //     quantity: 100,
-    //     price: 150.25,
-    //     status: "Filled",
-    //     time: new Date().toLocaleTimeString(),
-    //     ackMessage: ackMessage
-    //   };
-    //   setOrders([sampleOrder]);
-    //   setStatistics(prev => ({ ...prev, totalOrders: 1, filled: 1 }));
-      
-    //   const welcomeMessage: FixMessage = {
-    //     id: "MSG001",
-    //     type: "incoming",
-    //     content: "8=FIX.4.2|9=55|35=A|49=SERVER|56=CLIENT|34=1|52=20231215-10:30:00|98=0|108=30|10=123|",
-    //     timestamp: new Date().toLocaleTimeString(),
-    //     msgType: "Logon",
-    //     tags: {
-    //       "8": "O.4.2",
-    //       "9": "55",
-    //       "35": "A",
-    //       "49": "SERVER",
-    //       "56": "CLIENT",
-    //       "34": "1",
-    //       "52": "20231215-10:30:00",
-    //       "98": "0",
-    //       "108": "30",
-    //       "10": "123"
-    //     }
-    //   };
-    //   setMessages([welcomeMessage]);
-    // }, 1000);
+    window.electronAPI?.onConnectionError((error) => {
+      toast({
+        title: "❌ Connection Error",
+        description: error,
+        variant: "destructive"
+      });
+    });
   };
 
   const handleDisconnect = () => {
-    window.electronAPI?.onBackendConnected(() => {
-      setIsConnected(true);
-      toast({
-        title: "🟢 Connected Successfully",
-        description: "Successfully connected to OUCH server",
-        className: "bg-emerald-50 border-emerald-200 text-emerald-800"
-      });
-    });
-    window.electronAPI?.onBackendDisconnected( () => {
-      setIsConnected(false);
-      toast({
-        title: "🔴 Disconnected",
-        description: "Disconnected from OUCH server",
-        variant: "destructive"
-      });    
+    window.electronAPI?.sendDisconnect();
+    setIsConnected(false);
+    toast({
+      title: "🔴 Disconnecting...",
+      description: "Sending disconnect request",
     });
   };
 

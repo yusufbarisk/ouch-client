@@ -1,10 +1,11 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron'); 
 const zmq = require("zeromq");
 
 let mainWindow = null;
 let HEARTBEAT_INTERVAL = 5;
 let heartbeatTimer = null;
 let isConnected = false;
+let pubSocket = null; 
 
 ///////////////////////////////////////////////////////
 // Setup SUB socket to send orders to the backend
@@ -17,6 +18,40 @@ function handleBackendDisconnect() {
   }
   isConnected = false;
 }
+
+ipcMain.handle('send-connection-config', async (event, config) => {
+  try {
+
+    if (pubSocket) {
+      await pubSocket.send(JSON.stringify({
+        type: "CONN",
+        command: "connect",
+        ...config
+      }));
+      event.sender.send('connection-config-response', { success: true });
+    } else {
+      event.sender.send('connection-config-response', { success: false, error: "No pubSocket" });
+    }
+  } catch (error) {
+    event.sender.send('connection-error', error.message || error);
+  }
+});
+
+ipcMain.handle('disconnect-backend', async (event) => {
+  try {
+    if (pubSocket) {
+      await pubSocket.send(JSON.stringify({
+        type: "CONN",
+        command: "disconnect"
+      }));
+      event.sender.send('disconnect-response', { success: true });
+    } else {
+      event.sender.send('disconnect-response', { success: false, error: "No pubSocket" });
+    }
+  } catch (error) {
+    event.sender.send('disconnect-response', { success: false, error: error.message || error });
+  }
+});
 
 async function subscribeToEvents() {
   const sock = new zmq.Subscriber();
@@ -72,7 +107,6 @@ async function sendOrderToBackend(order) {
   return { status: "ok" };
 }
 
-const { ipcMain } = require('electron');
 ipcMain.handle('send-order', async (event, order) => {
   return await sendOrderToBackend(order);
 });

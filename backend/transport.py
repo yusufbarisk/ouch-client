@@ -67,16 +67,15 @@ class OuchClient(asyncio.Protocol):
 
     def handle_incoming_message(self, msg):
         """Handle incoming messages."""
-        if(msg.TYPE_ID != PacketType.SERVER_HEARTBEAT.value):
-            self.logger.debug(f"Received message: {msg}")
-        if isinstance(msg, ServerHeartbeat | SequencedData | UnsequencedData):
-            # Update server timestamp
+        # if(msg.TYPE_ID != PacketType.SERVER_HEARTBEAT.value):
+        self.logger.debug(f"Received message: {msg}")
+        
+        if isinstance(msg, ServerHeartbeat):
             if self.hb:
-                # self.logger.debug("Updating server timestamp")
+                self.logger.debug("Updating server timestamp")
                 self.hb.refresh_server_timestamp()
             else:
                 self.logger.warning("Heartbeat controller not initialized, skipping timestamp update")
-            # self.logger.info("💓 Server heartbeat received")
 
 
         if isinstance(msg, LoginAccepted):
