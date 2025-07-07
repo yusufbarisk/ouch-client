@@ -4,7 +4,7 @@
   <img src="./assets/demo.gif" alt="OUCH Client Demo" width="90%"/>
 </p>
 
-A modern, professional OUCH 3.0.0 protocol client for BIST, built with ❤️ for traders, testers, and protocol enthusiasts!
+A modern, professional OUCH 3.0.0 protocol client for BIST, built for traders, testers, and protocol enthusiasts. 
 
 ---
 
@@ -58,9 +58,20 @@ OUCH Client is a cross-platform client for the OUCH 3.0.0 (BIST) protocol, desig
 ### 🚀 Quick Start
 
 1. `npm install` in `/front` and `/backend` (Python deps)
-2. `npm run dev` in `/front` for the UI
+2. `npm run front` for the UI
 3. `python backend/main.py` for the backend
 4. Connect, trade, and test! 🥳
+
+### `.env`
+
+```dotenv
+HOST_ADDR="127.0.0.1"
+HOST_PORT=9999
+HEARTBEAT_INTERVAL=5
+DEBUG=True
+
+TEST_USERNAME="admin"
+TEST_PASSWORD="admin"
 
 ---
 
