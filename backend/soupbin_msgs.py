@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import ClassVar
+from typing import ClassVar, Optional
 import struct
-from typing import Iterator, Tuple, Optional, Union
 
 
 class PacketType(Enum):

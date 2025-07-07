@@ -1,6 +1,5 @@
 import asyncio
 from soupbin_msgs import *
-from dotenv import load_dotenv
 import os
 import logging
 import json

@@ -1,14 +1,13 @@
 import zmq, json, os
 import zmq.asyncio
 import asyncio
-from typing import Optional
 from dotenv import load_dotenv
 from heartbeat_controller import HeartbeatController
 import logging
 from transport import OuchClient
 import sys
 from util import create_ouch_message_from_json
-from soupbin_msgs import SequencedData, UnsequencedData, LogoutRequest
+from soupbin_msgs import UnsequencedData, LogoutRequest
 
 
 async def handle_conn(data, client, root):

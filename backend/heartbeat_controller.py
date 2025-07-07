@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from soupbin_msgs import ClientHeartbeat, ServerHeartbeat
+from soupbin_msgs import ClientHeartbeat
 
 from typing import TYPE_CHECKING
 

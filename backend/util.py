@@ -1,5 +1,4 @@
 
-import json
 from ouch_msgs import *
 import logging
 
